@@ -1,6 +1,8 @@
 import express, { Router } from 'express';
 import controller from './controller';
-const router: Router = express.Router();
+
+// mergeParams allows /:serviceContextId from parent router to be visible here
+const router: Router = express.Router({ mergeParams: true });
 
 /*
     C.6.14.1 Obtaining a list of user ids
@@ -23,8 +25,18 @@ router.post('/current-user', controller.POSTCurrentUser);
 router.get('/files', controller.GETUserFile);
 
 /*
+    C.6.14.2 Obtaining broadcaster-specific attributes (Annex C.6.14.2)
+*/
+router.get('/:userid/broadcaster-attrs', controller.GETBroadcasterAttrs);
+
+/*
+    C.6.14.2 Updating broadcaster-specific attributes (Annex C.6.14.2)
+*/
+router.put('/:userid/broadcaster-attrs', controller.PUTBroadcasterAttrs);
+
+/*
     C.6.14.2 Obtaining a set of user attributes
 */
 router.get('/:userid', controller.GETUserAttribute);
 
-export default router
+export default router;

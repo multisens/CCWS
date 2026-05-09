@@ -1,0 +1,37 @@
+name: Bump submodule ccws em TV30
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout TV30 (super-projeto)
+        uses: actions/checkout@v4
+        with:
+          repository: multisens/TV30
+          token: ${{ secrets.TV30_REPO_TOKEN }}
+          submodules: false
+          fetch-depth: 0
+
+      - name: Atualizar ponteiro do submodule ccws
+        env:
+          CCWS_SHA: ${{ github.sha }}
+        run: |
+          set -e
+          git config user.name  "Luis Claudio Ribeiro Junior"
+          git config user.email "luis.claudio.r.jr@gmail.com"
+
+          CURRENT=$(git ls-tree HEAD ccws | awk '{print $3}')
+          if [ "$CURRENT" = "$CCWS_SHA" ]; then
+            echo "Ponteiro ja em $CCWS_SHA — sem mudancas"
+            exit 0
+          fi
+
+          echo "Atualizando ponteiro do submodule ccws: $CURRENT -> $CCWS_SHA"
+          git update-index --cacheinfo 160000 "$CCWS_SHA" ccws
+
+          git commit -m "chore: bump submodule ccws pra ${CCWS_SHA:0:7}"
+          git push origin main

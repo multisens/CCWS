@@ -3,12 +3,13 @@ import service from './service';
 import { UserId } from './types';
 
 
-function GETCurrentUser(req: Request, res: Response): void {
-	console.log(`pediu usuário e recebeu ${service.getCurrentUser()}`);
-    res.status(200).json({ id : service.getCurrentUser() });
+async function GETCurrentUser(req: Request, res: Response): Promise<void> {
+	const id = await service.getCurrentUser();
+	console.log(`pediu usuário e recebeu ${id}`);
+    res.status(200).json({ id });
 }
 
-function POSTCurrentUser(req: Request, res: Response): void {
+async function POSTCurrentUser(req: Request, res: Response): Promise<void> {
     const body: UserId = req.body;
     if (!body) {
         res.status(400).json({
@@ -17,7 +18,7 @@ function POSTCurrentUser(req: Request, res: Response): void {
 		});
 		return;
     }
-    service.setCurrentUser(body.id);
+    await service.setCurrentUser(body.id);
     res.sendStatus(200);
 }
 
@@ -78,4 +79,29 @@ function GETUserFile(req: Request, res: Response): void {
 }
 
 
-export default { GETCurrentUser, POSTCurrentUser, POSTUserList, GETUserAttribute, GETUserFile }
+async function GETBroadcasterAttrs(req: Request, res: Response): Promise<void> {
+    const { userid, serviceContextId } = req.params;
+    if (!userid) {
+        res.status(400).json({ error: 305, description: 'No user defined' });
+        return;
+    }
+    const attrs = await service.getBroadcasterAttrs(userid, serviceContextId ?? 'current-service');
+    res.status(200).json(attrs);
+}
+
+async function PUTBroadcasterAttrs(req: Request, res: Response): Promise<void> {
+    const { userid, serviceContextId } = req.params;
+    if (!userid) {
+        res.status(400).json({ error: 305, description: 'No user defined' });
+        return;
+    }
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+        res.status(400).json({ error: 106, description: 'Request body must be a JSON object' });
+        return;
+    }
+    await service.setBroadcasterAttrs(userid, serviceContextId ?? 'current-service', req.body);
+    res.sendStatus(200);
+}
+
+
+export default { GETCurrentUser, POSTCurrentUser, POSTUserList, GETUserAttribute, GETUserFile, GETBroadcasterAttrs, PUTBroadcasterAttrs }

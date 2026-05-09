@@ -4,6 +4,7 @@ import logger from './logger';
 import mqttClient, { TOPICS, client } from "./mqtt-client";
 import { AppNode } from "./modules/remotedevice-manager/remote-device";
 import { associateAppNodes, disassociateAppNodes } from "./modules/remotedevice-manager/manager";
+import redis from './redis-client';
 dotenv.config();
 
 type CoreData = {
@@ -154,6 +155,14 @@ function currentService(sid: string): void {
   data.app.nodes = [];
   data.current.serviceId = data.services[Number(sid)]?.serviceId;
   data.current.serviceName = data.services[Number(sid)]?.serviceName;
+
+  redis.hset('session:current-service', {
+    serviceContextId: data.current.serviceContextId,
+    serviceId: String(data.current.serviceId ?? ''),
+    serviceName: data.current.serviceName ?? '',
+    transportStreamId: data.current.transportStreamId,
+    originalNetworkId: data.current.originalNetworkId,
+  }).catch((err: Error) => logger.error(`[Redis] Failed to persist session:current-service: ${err.message}`));
 }
 
 mqttClient.addTopicHandler(TOPICS.current_service, currentService);
