@@ -3,9 +3,9 @@ import { returnError, getClientIP, isLocalClient } from '../util';
 const router: Router = express.Router();
 
 router.use((req: Request, res: Response, next: NextFunction) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, bind-token, Accept, Accept-Version');
+    // CORS eh tratado pelo KrakenD (gateway). Setar aqui causa duplicacao
+    // do header Access-Control-Allow-Origin no response final, que o Chrome
+    // bloqueia como CORS violation.
 
     // Default header values
     res.setHeader('API-Version', '2.0');
