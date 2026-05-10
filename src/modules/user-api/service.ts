@@ -137,6 +137,13 @@ async function getUserList(body: Expression): Promise<UsersIdList> {
     const currentService = await readCurrentService();
     const userIds = await redis.smembers('users:index');
 
+    // Sem service ativo (boot do AoP / profile-chooser): retorna todos os users.
+    // Spec C.6.14.1 cobre o caso "com service ativo" — fora desse caso, lista
+    // tudo pra permitir escolha de perfil antes de qualquer service ser selecionado.
+    if (!currentService) {
+        return { users: userIds.map(id => ({ id })) };
+    }
+
     const consentPipeline = redis.pipeline();
     userIds.forEach(id => consentPipeline.smembers(`user:${id}:consent`));
     const consentResults = await consentPipeline.exec() as Array<[Error | null, string[]]>;
@@ -164,8 +171,13 @@ async function getUserList(body: Expression): Promise<UsersIdList> {
 
 async function getUserAttribute(uuid: string, atname?: string): Promise<UserAttributes> {
     const currentService = await readCurrentService();
-    const hasConsent = await redis.sismember(`user:${uuid}:consent`, currentService);
-    if (!hasConsent) return null as any;
+
+    // Sem service ativo: profile-chooser pode pedir detalhes pra escolher perfil.
+    // Com service ativo: aplica consent check (C.6.14.2).
+    if (currentService) {
+        const hasConsent = await redis.sismember(`user:${uuid}:consent`, currentService);
+        if (!hasConsent) return null as any;
+    }
 
     if (atname) {
         return await redis.hget(`user:${uuid}`, atname) as any;
