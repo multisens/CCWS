@@ -33,15 +33,21 @@ export type UsersIdList = {
 }
 
 
+// ABNT NBR 25608 — Tabela 7: atributos basicos do perfil do telespectador
 export type UserAttributes = {
     id: string,
-    name: string,
-    isGroup: boolean,
-    avatar: string,
-    language: string,
-    captions: boolean,
-    subtitle: boolean,
-    signLanguageWindow: boolean,
+    nickname: string,
+    avatar?: string,
+    parentalControl: boolean,
+    maxContentRating?: string,
+    audioLanguage?: string,
+    closedCaptioningLanguage?: string,
+    userInterfaceLanguage?: string,
+    closedCaptioning: boolean,
+    closedSigning: boolean,
+    closedSigningSide?: 'left' | 'right',
+    closedSigningWidth?: number,
     audioDescription: boolean,
-    dialogEnhancement: boolean
+    dialogEnhancement: boolean,
+    voiceGuidance: boolean
 } | string

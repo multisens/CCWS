@@ -9,6 +9,7 @@ import accessAPI from './apis/access';
 import dtvAPI from "./modules/dtv-api";
 import appfilesAPI from "./modules/appfiles-api";
 import userAPI from "./modules/user-api";
+import userController from "./modules/user-api/controller";
 import remotedevAPI from "./modules/remotedevice-api";
 import sensoryEffectRenderersAPI from "./modules/sensory-effect-renderers-api";
 
@@ -27,6 +28,7 @@ app.use("/health", (req: Request, res: Response) => {
   });
 });
 app.use("/tv3/current-service/apps", appfilesAPI);
+app.post("/tv3/users", userController.POSTCreateUser);   // criar user (fora da spec, usado pelo profile-creator do AoP)
 app.use("/tv3/current-service/users", userAPI);
 app.use("/tv3/:serviceContextId/users", userAPI);   // broadcaster-attrs por contexto de serviço
 app.use("/tv3/remote-device", remotedevAPI);

@@ -104,4 +104,18 @@ async function PUTBroadcasterAttrs(req: Request, res: Response): Promise<void> {
 }
 
 
-export default { GETCurrentUser, POSTCurrentUser, POSTUserList, GETUserAttribute, GETUserFile, GETBroadcasterAttrs, PUTBroadcasterAttrs }
+async function POSTCreateUser(req: Request, res: Response): Promise<void> {
+    if (!req.body || typeof req.body !== 'object') {
+        res.status(400).json({ error: 105, description: 'Body JSON obrigatório' });
+        return;
+    }
+    try {
+        const newUser = await service.createUser(req.body);
+        res.status(201).json(newUser);
+    } catch (err: any) {
+        res.status(400).json({ error: err.message });
+    }
+}
+
+
+export default { GETCurrentUser, POSTCurrentUser, POSTUserList, GETUserAttribute, GETUserFile, GETBroadcasterAttrs, PUTBroadcasterAttrs, POSTCreateUser }

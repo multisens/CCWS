@@ -207,6 +207,106 @@ async function checkConsent(avatarPath: string): Promise<boolean> {
 }
 
 
+// --- Create user (ABNT NBR 25608) ---
+
+const VALID_RATINGS = ['L', '10', '12', '14', '16', '18'];
+const VALID_SIDES   = ['left', 'right'];
+
+const DEFAULT_AVATAR_SVG =
+    '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect width="100" height="100" rx="30" fill="#4d7c5b"/>' +
+        '<circle cx="50" cy="40" r="14" fill="none" stroke="#ffffff" stroke-width="5"/>' +
+        '<path d="M 14 90 a 36 36 0 0 1 72 0" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>' +
+    '</svg>';
+
+async function createUser(userData: any): Promise<any> {
+    // ABNT NBR 25608 — Tabela 7 (atributos basicos do perfil do telespectador)
+    const nickname = String(userData.nickname || userData.name || '').trim();
+    if (!nickname) throw new Error('nickname é obrigatório');
+    if (nickname.length > 20) throw new Error('nickname deve ter no máximo 20 caracteres');
+
+    const parentalControl = !!userData.parentalControl;
+    if (parentalControl && !userData.maxContentRating) {
+        throw new Error('maxContentRating é obrigatório quando parentalControl = true');
+    }
+    if (userData.maxContentRating && !VALID_RATINGS.includes(userData.maxContentRating)) {
+        throw new Error(`maxContentRating deve ser um de: ${VALID_RATINGS.join(', ')}`);
+    }
+
+    const closedSigning = !!userData.closedSigning;
+    if (closedSigning) {
+        if (userData.closedSigningWidth !== undefined) {
+            const w = parseInt(userData.closedSigningWidth);
+            if (isNaN(w) || w < 14 || w > 28) throw new Error('closedSigningWidth deve estar entre 14 e 28');
+        }
+        if (userData.closedSigningSide && !VALID_SIDES.includes(userData.closedSigningSide)) {
+            throw new Error('closedSigningSide deve ser "left" ou "right"');
+        }
+    }
+
+    const userId = `user_${Date.now()}`;
+    const closedCaptioning = !!userData.closedCaptioning;
+
+    // Quem cria perfil pelo profile-chooser concorda com o termo LGPD no form.
+    // Esse aceite vira consent para o serviço ativo, garantindo que o novo perfil
+    // apareça na proxima listagem (que filtra por consent do current-service).
+    const currentService = await readCurrentService();
+    const accessConsent: string[] = Array.isArray(userData.accessConsent) ? userData.accessConsent.slice() : [];
+    if (currentService && !accessConsent.includes(currentService)) {
+        accessConsent.push(currentService);
+    }
+
+    const newUser: any = {
+        id:                       userId,
+        nickname,
+        avatar:                   userData.avatar || DEFAULT_AVATAR_SVG,
+        parentalControl,
+        maxContentRating:         parentalControl ? userData.maxContentRating : null,
+        audioLanguage:            userData.audioLanguage || 'pt-BR',
+        closedCaptioningLanguage: closedCaptioning ? (userData.closedCaptioningLanguage || 'pt-BR') : null,
+        userInterfaceLanguage:    userData.userInterfaceLanguage || 'pt-BR',
+        closedCaptioning,
+        closedSigning,
+        closedSigningSide:        closedSigning ? (userData.closedSigningSide || 'right') : null,
+        closedSigningWidth:       closedSigning ? (userData.closedSigningWidth ? parseInt(userData.closedSigningWidth) : 28) : null,
+        audioDescription:         !!userData.audioDescription,
+        dialogEnhancement:        !!userData.dialogEnhancement,
+        voiceGuidance:            !!userData.voiceGuidance,
+        accessConsent
+    };
+
+    // Persiste no Redis (mesma estrutura do syncUsersFromFile)
+    const hashFields: Record<string, string> = {};
+    for (const [k, v] of Object.entries(newUser)) {
+        if (k === 'accessConsent' || k === 'consent') continue;
+        if (v !== null && v !== undefined) hashFields[k] = String(v);
+    }
+    await redis.sadd('users:index', userId);
+    await redis.hset(`user:${userId}`, hashFields);
+    if (newUser.accessConsent.length > 0) {
+        await redis.sadd(`user:${userId}:consent`, ...newUser.accessConsent);
+    }
+
+    // Persiste no userData.json (mantem seed sincronizado pra rebuild da stack)
+    const userDataFile = process.env.USER_DATA_FILE;
+    if (userDataFile && fs.existsSync(userDataFile)) {
+        try {
+            const current = JSON.parse(fs.readFileSync(userDataFile, 'utf-8'));
+            current.users = current.users || [];
+            current.users.push(newUser);
+            fs.writeFileSync(userDataFile, JSON.stringify(current, null, '\t'));
+        } catch (err) {
+            console.error(`[createUser] Falha persistindo em ${userDataFile}: ${(err as Error).message}`);
+        }
+    }
+
+    // Notifica AoP via MQTT pra recarregar DATA.users
+    mqttClient.publish('aop/users', process.env.USER_DATA_PATH || '/user-files', false);
+
+    return newUser;
+}
+
+
 // --- Broadcaster attributes ---
 
 async function getBroadcasterAttrs(userId: string, serviceContextId: string): Promise<Record<string, string>> {
@@ -247,4 +347,4 @@ function getMime(ext: string): string {
 }
 
 
-export default { getCurrentUser, setCurrentUser, getUserList, getUserAttribute, checkConsent, getFile, getBroadcasterAttrs, setBroadcasterAttrs };
+export default { getCurrentUser, setCurrentUser, getUserList, getUserAttribute, checkConsent, getFile, getBroadcasterAttrs, setBroadcasterAttrs, createUser };
