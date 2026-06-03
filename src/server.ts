@@ -2,7 +2,18 @@ import * as dotenv from 'dotenv';
 import http from 'http';
 import https from 'https';
 import logger from './logger';
+import { assertEnv } from './util';
 dotenv.config();
+
+assertEnv([
+    'MQTT_HOST',
+    'REDIS_HOST',
+    'HTTPS_KEY',
+    'HTTPS_CERT',
+    'JWT_SECRET',
+    'USER_DATA_FILE',
+    'USER_THUMBS',
+]);
 
 import app from './app';
 const http_server = http.createServer(app);
