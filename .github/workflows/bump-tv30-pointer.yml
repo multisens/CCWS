@@ -28,7 +28,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build e push tv30-ccws
+      - name: Build e push tv30-ws-subset
         uses: docker/build-push-action@v5
         with:
           context: ./ccws
@@ -38,8 +38,8 @@ jobs:
             tv30-scripts=./infra/dockerfiles
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/tv30-ccws:${{ github.sha }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/tv30-ccws:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/tv30-ws-subset:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/tv30-ws-subset:latest
 
   bump:
     needs: build-image
