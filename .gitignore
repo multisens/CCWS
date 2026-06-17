@@ -4,3 +4,5 @@
 node_modules
 dist
 *.log
+cert.pem
+key.pem
