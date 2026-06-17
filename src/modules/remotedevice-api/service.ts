@@ -39,7 +39,9 @@ function createWebSocket(body: ReqBody): Response {
 }
 
 function generateDynamicallyPort(): number {
-  return Math.floor(1000 + Math.random() * 9000);
+  const min = parseInt(process.env.WS_PORT_MIN || '1000');
+  const max = parseInt(process.env.WS_PORT_MAX || '9999');
+  return Math.floor(min + Math.random() * (max - min));
 }
 
 function deleteWebSocket(handle: string): boolean {
