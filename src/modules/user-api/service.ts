@@ -23,6 +23,26 @@ async function readCurrentService(): Promise<string> {
     return (await redis.get(KEY_CURRENT_SERVICE)) ?? '';
 }
 
+// Retorna o service ativo APENAS se for "conhecido" — i.e. pelo menos um user
+// tem consent pra ele. Um service obsoleto/retido (ex: aop/currentService preso
+// no broker apos um restart, cujo SID ninguem consentiu) eh tratado como "sem
+// service ativo". Sem esse guard o filtro de consent esconde TODOS os perfis e
+// o profile-chooser fica vazio, travando o workflow do AoP.
+async function resolveActiveService(): Promise<string> {
+    const currentService = await readCurrentService();
+    if (!currentService) return '';
+
+    const userIds = await redis.smembers('users:index');
+    if (userIds.length === 0) return currentService;
+
+    const pipeline = redis.pipeline();
+    userIds.forEach(id => pipeline.sismember(`user:${id}:consent`, currentService));
+    const results = await pipeline.exec() as Array<[Error | null, number]>;
+
+    const known = results.some(r => r?.[1] === 1);
+    return known ? currentService : '';
+}
+
 
 // --- MQTT handlers ---
 
@@ -134,7 +154,7 @@ async function setCurrentUser(uuid: string): Promise<void> {
 }
 
 async function getUserList(body: Expression): Promise<UsersIdList> {
-    const currentService = await readCurrentService();
+    const currentService = await resolveActiveService();
     const userIds = await redis.smembers('users:index');
 
     // Sem service ativo (boot do AoP / profile-chooser): retorna todos os users.
@@ -170,7 +190,7 @@ async function getUserList(body: Expression): Promise<UsersIdList> {
 }
 
 async function getUserAttribute(uuid: string, atname?: string): Promise<UserAttributes> {
-    const currentService = await readCurrentService();
+    const currentService = await resolveActiveService();
 
     // Sem service ativo: profile-chooser pode pedir detalhes pra escolher perfil.
     // Com service ativo: aplica consent check (C.6.14.2).
