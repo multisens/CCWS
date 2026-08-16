@@ -33,6 +33,7 @@ app.use("/tv3/current-service/users", userAPI);
 app.use("/tv3/:serviceContextId/users", userAPI);   // broadcaster-attrs por contexto de serviço
 app.use("/tv3/remote-device", remotedevAPI);
 app.use("/tv3/sensory-effect-renderers", sensoryEffectRenderersAPI);
+app.use("/tv3", dtvAPI);
 app.use("/tv3", accessAPI);
 
 export default app;

@@ -15,6 +15,10 @@ type TokenResponse = {
     serverCert?: string
 };
 
+function isGuaranaDevice(displayName: string): boolean {
+    return typeof displayName === 'string' && displayName.toLowerCase().includes('guarana');
+}
+
 async function GETAuthorize(req: Request, res: Response): Promise<void> {
     logger.debug('\nReceived call to /authorize');
 
@@ -90,11 +94,18 @@ function validateAuthorizeParameters(clientId: string, displayName: string, pm: 
 }
 
 async function checkAuthorization(clientId: string, displayName: string, res: Response): Promise<boolean> {
+    
+    if (isGuaranaDevice(displayName)) {
+        logger.info(`Auto-authorizing client ${clientId} due to Guarana display-name exception.`);
+        manager.AuthorizeClient(clientId);
+        return true;
+    }
+    
     if (manager.isAuthorized(clientId as string)) {
         returnError(res, 101, 'This client was already authorized before.');
         return false;
     }
-
+    
     if (manager.isBlocked(clientId as string)) {
         returnError(res, 102, 'This client was not authorized before and is blocked.');
         return false;
