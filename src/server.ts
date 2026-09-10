@@ -8,8 +8,6 @@ dotenv.config();
 assertEnv([
     'MQTT_HOST',
     'REDIS_HOST',
-    'HTTPS_KEY',
-    'HTTPS_CERT',
     'JWT_SECRET',
     'USER_DATA_FILE',
     'USER_THUMBS',
@@ -17,20 +15,29 @@ assertEnv([
 
 import app from './app';
 const http_server = http.createServer(app);
-const https_server = https.createServer({
-    key: Buffer.from(process.env.HTTPS_KEY!, 'base64'),
-    cert: Buffer.from(process.env.HTTPS_CERT!, 'base64')
-}, app);
 
-let _PORT = process.env.HTTP_PORT || 44642;
-http_server.listen(_PORT, () => {
-    logger.info(`TV 3.0 HTTP Webservice running on port: ${_PORT}`);
+const httpPort = process.env.HTTP_PORT || 44642;
+http_server.listen(httpPort, () => {
+    logger.info(`TV 3.0 HTTP Webservice running on port: ${httpPort}`);
 });
 
-_PORT = process.env.HTTPS_PORT || 44643;
-https_server.listen(_PORT, () => {
-    logger.info(`TV 3.0 HTTPS Webservice running on port: ${_PORT}`);
-});
+// HTTPS sobe apenas quando HTTPS_KEY/HTTPS_CERT (base64) estao presentes.
+// Sem eles o servico opera so em HTTP — suficiente pra subida local em
+// maquina nova sem nenhum arquivo pre-criado.
+const httpsKey = process.env.HTTPS_KEY?.trim();
+const httpsCert = process.env.HTTPS_CERT?.trim();
+if (httpsKey && httpsCert) {
+    const https_server = https.createServer({
+        key: Buffer.from(httpsKey, 'base64'),
+        cert: Buffer.from(httpsCert, 'base64')
+    }, app);
+    const httpsPort = process.env.HTTPS_PORT || 44643;
+    https_server.listen(httpsPort, () => {
+        logger.info(`TV 3.0 HTTPS Webservice running on port: ${httpsPort}`);
+    });
+} else {
+    logger.info('[boot] HTTPS_KEY/HTTPS_CERT ausentes — HTTPS desabilitado (somente HTTP)');
+}
 
 
 import ssdpServer from './ssdp-server';
